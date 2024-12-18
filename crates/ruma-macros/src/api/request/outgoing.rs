@@ -40,14 +40,14 @@ impl Request {
             quote! { "" }
         };
 
-        let mut additional_headers: usize = 0;
+        let mut reserve_headers: usize = self.header_fields().count();
 
         // If there are no body fields, the request body will be empty (not `{}`), so the
         // `application/json` content-type would be wrong. It may also cause problems with CORS
         // policies that don't allow the `Content-Type` header (for things such as `.well-known`
         // that are commonly handled by something else than a homeserver).
         let mut header_kvs = if self.raw_body_field().is_some() || self.has_body_fields() {
-            additional_headers += 1;
+            reserve_headers += 1;
             quote! {
                 req_headers.insert(
                     #http::header::CONTENT_TYPE,
@@ -83,7 +83,7 @@ impl Request {
             }
         }));
 
-        additional_headers += 1;
+        reserve_headers += 1;
         header_kvs.extend(quote! {
             req_headers.extend(METADATA.authorization_header(access_token)?);
         });
@@ -103,7 +103,6 @@ impl Request {
 
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
 
-        let reserve_headers = self.header_fields().count() + additional_headers;
 
         quote! {
             #[automatically_derived]
@@ -133,7 +132,7 @@ impl Request {
                         req_headers.reserve(#reserve_headers);
                         #header_kvs
 
-                        debug_assert!(#reserve_headers >= req_headers.len(), "not enough headers reserved");
+                        debug_assert!(#reserve_headers == req_headers.len(), "incorrect amount of headers reserved in outgoing request");
                     }
 
                     let http_request = req_builder.body(#request_body)?;

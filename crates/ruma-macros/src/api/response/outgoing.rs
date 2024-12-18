@@ -111,6 +111,9 @@ impl Response {
                     if let Some(mut headers) = resp_builder.headers_mut() {
                         headers.reserve(1 + #reserve_headers);
                         headers.insert(#http::header::CONTENT_TYPE, APPLICATION_JSON.clone());
+
+                        debug_assert!(1 + #reserve_headers == headers.len(), "incorrect amount of headers reserved in outgoing response");
+
                         #(#serialize_response_headers)*
                     }
 
